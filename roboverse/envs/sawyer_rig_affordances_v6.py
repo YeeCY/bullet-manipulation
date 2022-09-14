@@ -5,7 +5,8 @@ from gym.spaces import Box, Dict
 from collections import OrderedDict
 from roboverse.bullet.control import get_object_position
 from roboverse.envs.sawyer_base import SawyerBaseEnv
-from roboverse.bullet.misc import load_obj, deg_to_quat, quat_to_deg, quat_to_deg_batch, get_bbox
+from roboverse.bullet.misc import load_obj, deg_to_quat, get_bbox
+from roboverse.utils.misc import quat_to_deg, quat_to_deg_batch, first_nonzero
 from bullet_objects import loader, metadata
 import os.path as osp
 import importlib.util
@@ -463,8 +464,8 @@ class SawyerRigAffordancesV6(SawyerBaseEnv):
             self._sawyer, self._end_effector, 'pos', physicsClientId=self._uid)
         curr_angle = bullet.get_link_state(
             self._sawyer, self._end_effector, 'theta', physicsClientId=self._uid)
-        default_angle = quat_to_deg(
-            self.default_theta, physicsClientId=self._uid)
+
+        default_angle = quat_to_deg(self.default_theta)
 
         # Keep necesary degrees of theta fixed
         angle = np.append(default_angle[:2], [curr_angle[2]])
@@ -548,7 +549,7 @@ class SawyerRigAffordancesV6(SawyerBaseEnv):
             'skill_id': skill_id
         }
 
-    def get_success_metric(self, curr_state, goal_state, success_list=None, key=None):
+    def get_success_metric(self, curr_state, goal_state, key=None):
         success = np.zeros((curr_state.shape[0], 1), dtype=int)
         if key == "overall":
             curr_pos = curr_state[:, 8:11]
@@ -614,6 +615,7 @@ class SawyerRigAffordancesV6(SawyerBaseEnv):
         else:
             pos = curr_state[:, 0:3]
             goal_pos = goal_state[:, 0:3]
+
             deg = quat_to_deg_batch(curr_state[:, 3:7])
             goal_deg = quat_to_deg_batch(goal_state[:, 3:7])
 
@@ -636,13 +638,12 @@ class SawyerRigAffordancesV6(SawyerBaseEnv):
                     np.linalg.norm(pos - goal_pos, axis=1, keepdims=True) < self.gripper_pos_thresh,
                     np.sqrt(self.norm_deg(deg[:, [0]], goal_deg[:, [0]])**2 + self.norm_deg(deg[:, [1]], goal_deg[:, [1]])**2 + self.norm_deg(deg[:, [2]], goal_deg[:, [2]])**2) < self.gripper_rot_thresh
                 ).astype(int)
-        if success_list is not None:
-            assert curr_state.shape[0] == 1
-            success_list.append(int(success))
+        # if success_list is not None:
+        #     success_list.extend(success[:, 0].tolist())
 
         return success
 
-    def get_distance_metric(self, curr_state, goal_state, distance_list=None, key=None):
+    def get_distance_metric(self, curr_state, goal_state, key=None):
         distance = np.full((curr_state.shape[0], 1), np.inf, dtype=float)
         if key == 'top_drawer':
             curr_pos = curr_state[:, 8:11]
@@ -691,24 +692,24 @@ class SawyerRigAffordancesV6(SawyerBaseEnv):
             elif key == 'gripper_rotation':
                 distance = np.sqrt(self.norm_deg(deg[:, [0]], goal_deg[:, [0]])**2 + self.norm_deg(
                     deg[:, [1]], goal_deg[:, [1]])**2 + self.norm_deg(deg[:, [2]], goal_deg[:, [2]])**2)
-        if distance_list is not None:
-            assert curr_state.shape[0] == 1
-            distance_list.append(distance)
+        # if distance_list is not None:
+        #     distance_list.extend(distance[:, 0].tolist())
+
         return distance
 
     def norm_deg(self, deg1, deg2):
         return np.minimum(np.linalg.norm((360 + deg1 - deg2) % 360, axis=1, keepdims=True),
                           np.linalg.norm((360 + deg2 - deg1) % 360, axis=1, keepdims=True))
 
-    def get_gripper_deg(self, curr_state, roll_list=None, pitch_list=None, yaw_list=None):
-        quat = curr_state[3:7]
-        deg = quat_to_deg(quat)
-        if roll_list is not None:
-            roll_list.append(deg[0])
-        if pitch_list is not None:
-            pitch_list.append(deg[1])
-        if yaw_list is not None:
-            yaw_list.append(deg[2])
+    def get_gripper_deg(self, curr_state):
+        quat = curr_state[:, 3:7]
+        deg = quat_to_deg_batch(quat)
+        # if roll_list is not None:
+        #     roll_list.extend(deg[:, 0].tolist())
+        # if pitch_list is not None:
+        #     pitch_list.extend(deg[:, 1].tolist())
+        # if yaw_list is not None:
+        #     yaw_list.append(deg[:, 2].tolist())
 
         return deg
 
@@ -743,42 +744,26 @@ class SawyerRigAffordancesV6(SawyerBaseEnv):
                          "gripper_rotation_yaw",
                          "gripper_rotation"]
 
-        dict_of_success_lists = {}
-        for k in success_keys:
-            dict_of_success_lists[k] = []
+        dict_of_success_arrays = {}
+        # for k in success_keys:
+        #     dict_of_success_arrays[k] = []
 
-        dict_of_distance_lists = {}
-        for k in distance_keys:
-            dict_of_distance_lists[k] = []
+        dict_of_distance_arrays = {}
+        # for k in distance_keys:
+        #     dict_of_distance_lists[k] = []
 
-        dict_of_length_lists_1 = {}
-        for k in success_keys:
-            dict_of_length_lists_1[k] = []
+        dict_of_length_arrays_1 = {}
+        # for k in success_keys:
+        #     dict_of_length_lists_1[k] = []
 
-        dict_of_length_lists_2 = {}
-        for k in success_keys:
-            dict_of_length_lists_2[k] = []
-
-        # ---------------------------------------------------------
-        for i in range(len(paths)):
-            curr_obs = self.process(paths[i]["observations"][-1][state_key])
-            goal_obs = self.process(contexts[i][goal_key])
-            for k in success_keys:
-                self.get_success_metric(
-                    curr_obs, goal_obs,
-                    success_list=dict_of_success_lists[k], key=k)
-            for k in distance_keys:
-                self.get_distance_metric(
-                    curr_obs, goal_obs, distance_list=dict_of_distance_lists[k], key=k)
-
-        for k in success_keys:
-            diagnostics.update(create_stats_ordered_dict(
-                goal_key + f"/final/{k}_success", dict_of_success_lists[k]))
-        for k in distance_keys:
-            diagnostics.update(create_stats_ordered_dict(
-                goal_key + f"/final/{k}_distance", dict_of_distance_lists[k]))
+        dict_of_length_arrays_2 = {}
+        # for k in success_keys:
+        #     dict_of_length_lists_2[k] = []
 
         # ---------------------------------------------------------
+
+        import time
+        start_time = time.time()
         for i in range(len(paths)):
             for t in range(len(paths[i]["observations"])):
                 curr_obs = self.process(paths[i]["observations"][t][state_key])
@@ -787,69 +772,135 @@ class SawyerRigAffordancesV6(SawyerBaseEnv):
                     self.get_success_metric(
                         self.process(curr_obs),
                         self.process(goal_obs),
-                        success_list=dict_of_success_lists[k],
                         key=k)
                 for k in distance_keys:
                     self.get_distance_metric(
                         curr_obs,
                         goal_obs,
-                        distance_list=dict_of_distance_lists[k],
                         key=k)
+        end_time = time.time()
+        print("Time of original implementation: {} sec".format(end_time - start_time))
 
-        for k in success_keys:
-            diagnostics.update(create_stats_ordered_dict(
-                goal_key + f"/{k}_success", dict_of_success_lists[k]))
-        for k in distance_keys:
-            diagnostics.update(create_stats_ordered_dict(
-                goal_key + f"/{k}_distance", dict_of_distance_lists[k]))
-
-        # ---------------------------------------------------------
-        gripper_rotation_roll_list = []
-        gripper_rotation_pitch_list = []
-        gripper_rotation_yaw_list = []
+        num_paths = len(paths)
+        path_length = len(paths[i]["observations"])
+        start_time = time.time()
+        curr_obses, goal_obses = [], []
         for i in range(len(paths)):
+            path_curr_obses, path_goal_obses = [], []
             for t in range(len(paths[i]["observations"])):
                 curr_obs = paths[i]["observations"][t][state_key]
-                self.get_gripper_deg(curr_obs, roll_list=gripper_rotation_roll_list,
-                                     pitch_list=gripper_rotation_pitch_list, yaw_list=gripper_rotation_yaw_list)
+                goal_obs = contexts[i][goal_key]
+                path_curr_obses.append(curr_obs)
+                path_goal_obses.append(goal_obs)
+            curr_obses.append(path_curr_obses)
+            goal_obses.append(path_goal_obses)
+        curr_obses, goal_obses = \
+            np.array(curr_obses).reshape([-1, curr_obs.shape[0]]), \
+            np.array(goal_obses).reshape([-1, goal_obs.shape[0]])
+        for k in success_keys:
+            dict_of_success_array_k = self.get_success_metric(
+                curr_obses, goal_obses, key=k)
+            dict_of_success_arrays[k] = dict_of_success_array_k.reshape([num_paths, path_length])
+        for k in distance_keys:
+            dict_of_distance_array_k = self.get_distance_metric(
+                curr_obses, goal_obses, key=k)
+            dict_of_distance_arrays[k] = dict_of_distance_array_k.reshape([num_paths, path_length])
+        end_time = time.time()
+        print("Time of batch implementation: {} sec".format(end_time - start_time))
 
-        diagnostics.update(create_stats_ordered_dict(
-            state_key + "/gripper_rotation_roll", gripper_rotation_roll_list))
-        diagnostics.update(create_stats_ordered_dict(
-            state_key + "/gripper_rotation_pitch", gripper_rotation_pitch_list))
-        diagnostics.update(create_stats_ordered_dict(
-            state_key + "/gripper_rotation_yaw", gripper_rotation_yaw_list))
+        for k in success_keys:
+            diagnostics.update(create_stats_ordered_dict(
+                goal_key + f"/final/{k}_success", dict_of_success_arrays[k][:, -1]))
+        for k in distance_keys:
+            diagnostics.update(create_stats_ordered_dict(
+                goal_key + f"/final/{k}_distance", dict_of_distance_arrays[k][:, -1]))
 
         # ---------------------------------------------------------
-        for k in success_keys:
-            for i in range(len(paths)):
-                success = False
-                goal_obs = self.process(contexts[i][goal_key])
-                for t in range(len(paths[i]["observations"])):
-                    curr_obs = self.process(paths[i]["observations"][t][state_key])
-                    success = self.get_success_metric(
-                        curr_obs,
-                        goal_obs,
-                        success_list=None,
-                        key=k)
-                    if success:
-                        break
-
-                dict_of_length_lists_1[k].append(t)
-
-                if success:
-                    dict_of_length_lists_2[k].append(t)
-
-            if len(dict_of_length_lists_2[k]) == 0:
-                dict_of_length_lists_2[k] = [int(1e3 - 1)]
+        # for i in range(len(paths)):
+        #     for t in range(len(paths[i]["observations"])):
+        #         curr_obs = self.process(paths[i]["observations"][t][state_key])
+        #         goal_obs = self.process(contexts[i][goal_key])
+        #         for k in success_keys:
+        #             self.get_success_metric(
+        #                 self.process(curr_obs),
+        #                 self.process(goal_obs),
+        #                 success_list=dict_of_success_lists[k],
+        #                 key=k)
+        #         for k in distance_keys:
+        #             self.get_distance_metric(
+        #                 curr_obs,
+        #                 goal_obs,
+        #                 distance_list=dict_of_distance_lists[k],
+        #                 key=k)
 
         for k in success_keys:
+            diagnostics.update(create_stats_ordered_dict(
+                goal_key + f"/{k}_success", dict_of_success_arrays[k]))
+        for k in distance_keys:
+            diagnostics.update(create_stats_ordered_dict(
+                goal_key + f"/{k}_distance", dict_of_distance_arrays[k]))
+
+        # ---------------------------------------------------------
+        # gripper_rotation_roll_list = []
+        # gripper_rotation_pitch_list = []
+        # gripper_rotation_yaw_list = []
+        # for i in range(len(paths)):
+        #     for t in range(len(paths[i]["observations"])):
+        #         curr_obs = paths[i]["observations"][t][state_key]
+        #         self.get_gripper_deg(curr_obs, roll_list=gripper_rotation_roll_list,
+        #                              pitch_list=gripper_rotation_pitch_list, yaw_list=gripper_rotation_yaw_list)
+
+        degs = self.get_gripper_deg(curr_obses)
+        gripper_rotation_roll_array, gripper_rotation_pitch_array, gripper_rotation_yaw_array = \
+            degs[:, 0].reshape([num_paths, path_length]), \
+            degs[:, 1].reshape([num_paths, path_length]), \
+            degs[:, 2].reshape([num_paths, path_length])
+
+        diagnostics.update(create_stats_ordered_dict(
+            state_key + "/gripper_rotation_roll", gripper_rotation_roll_array))
+        diagnostics.update(create_stats_ordered_dict(
+            state_key + "/gripper_rotation_pitch", gripper_rotation_pitch_array))
+        diagnostics.update(create_stats_ordered_dict(
+            state_key + "/gripper_rotation_yaw", gripper_rotation_yaw_array))
+
+        # ---------------------------------------------------------
+        # for k in success_keys:
+        #     for i in range(len(paths)):
+        #         success = False
+        #         goal_obs = self.process(contexts[i][goal_key])
+        #         for t in range(len(paths[i]["observations"])):
+        #             curr_obs = self.process(paths[i]["observations"][t][state_key])
+        #             success = self.get_success_metric(
+        #                 curr_obs,
+        #                 goal_obs,
+        #                 success_list=None,
+        #                 key=k)
+        #             if success:
+        #                 break
+        #
+        #         dict_of_length_lists_1[k].append(t)
+        #
+        #         if success:
+        #             dict_of_length_lists_2[k].append(t)
+        #
+        #     if len(dict_of_length_lists_2[k]) == 0:
+        #         dict_of_length_lists_2[k] = [int(1e3 - 1)]
+
+        # Reference: https://stackoverflow.com/questions/47269390/how-to-find-first-non-zero-value-in-every-column-of-a-numpy-array
+        for k in success_keys:
+            first_success_t = first_nonzero(
+                dict_of_success_arrays[k], axis=1, invalid_val=-1)
+            dict_of_length_arrays_1[k] = np.where(
+                first_success_t != -1, first_success_t, path_length - 1)
+            dict_of_length_arrays_2[k] = np.where(
+                first_success_t != -1, first_success_t, int(1e3 - 1))
+
             diagnostics.update(create_stats_ordered_dict(
                 goal_key + f"/{k}_length_inclusive",
-                dict_of_length_lists_1[k]))
+                dict_of_length_arrays_1[k]))
             diagnostics.update(create_stats_ordered_dict(
                 goal_key + f"/{k}_length_exclusive",
-                dict_of_length_lists_2[k]))
+                dict_of_length_arrays_2[k]))
 
         return diagnostics
 
