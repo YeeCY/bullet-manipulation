@@ -8,7 +8,7 @@ import os
 from PIL import Image
 import math
 import argparse
-from multiprocess import Pool
+from multiprocessing import Pool
 import gc
 
 from rlkit.experimental.kuanfang.envs.drawer_pnp_push_commands import drawer_pnp_push_commands  # NOQA
