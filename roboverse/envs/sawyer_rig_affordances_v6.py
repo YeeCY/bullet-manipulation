@@ -762,28 +762,28 @@ class SawyerRigAffordancesV6(SawyerBaseEnv):
 
         # ---------------------------------------------------------
 
-        import time
-        start_time = time.time()
-        for i in range(len(paths)):
-            for t in range(len(paths[i]["observations"])):
-                curr_obs = self.process(paths[i]["observations"][t][state_key])
-                goal_obs = self.process(contexts[i][goal_key])
-                for k in success_keys:
-                    self.get_success_metric(
-                        self.process(curr_obs),
-                        self.process(goal_obs),
-                        key=k)
-                for k in distance_keys:
-                    self.get_distance_metric(
-                        curr_obs,
-                        goal_obs,
-                        key=k)
-        end_time = time.time()
-        print("Time of original implementation: {} sec".format(end_time - start_time))
+        # import time
+        # start_time = time.time()
+        # for i in range(len(paths)):
+        #     for t in range(len(paths[i]["observations"])):
+        #         curr_obs = self.process(paths[i]["observations"][t][state_key])
+        #         goal_obs = self.process(contexts[i][goal_key])
+        #         for k in success_keys:
+        #             self.get_success_metric(
+        #                 self.process(curr_obs),
+        #                 self.process(goal_obs),
+        #                 key=k)
+        #         for k in distance_keys:
+        #             self.get_distance_metric(
+        #                 curr_obs,
+        #                 goal_obs,
+        #                 key=k)
+        # end_time = time.time()
+        # print("Time of original implementation: {} sec".format(end_time - start_time))
 
         num_paths = len(paths)
-        path_length = len(paths[i]["observations"])
-        start_time = time.time()
+        path_length = len(paths[0]["observations"])
+        # start_time = time.time()
         curr_obses, goal_obses = [], []
         for i in range(len(paths)):
             path_curr_obses, path_goal_obses = [], []
@@ -805,8 +805,8 @@ class SawyerRigAffordancesV6(SawyerBaseEnv):
             dict_of_distance_array_k = self.get_distance_metric(
                 curr_obses, goal_obses, key=k)
             dict_of_distance_arrays[k] = dict_of_distance_array_k.reshape([num_paths, path_length])
-        end_time = time.time()
-        print("Time of batch implementation: {} sec".format(end_time - start_time))
+        # end_time = time.time()
+        # print("Time of batch implementation: {} sec".format(end_time - start_time))
 
         for k in success_keys:
             diagnostics.update(create_stats_ordered_dict(
