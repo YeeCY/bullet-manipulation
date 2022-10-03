@@ -8,7 +8,7 @@ import os
 from PIL import Image
 import math
 import argparse
-from multiprocessing import Pool
+from multiprocess import Pool
 import gc
 from roboverse.envs.configs.drawer_pnp_push_env_configs import drawer_pnp_push_env_configs
 
