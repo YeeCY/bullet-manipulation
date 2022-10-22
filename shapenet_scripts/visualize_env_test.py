@@ -7,38 +7,39 @@ import skvideo.io
 from rlkit.experimental.kuanfang.envs.drawer_pnp_push_commands import drawer_pnp_push_commands
 from roboverse.envs.configs.drawer_pnp_push_env_configs import drawer_pnp_push_env_configs
 
-ts = 75
-num_traj = 100
+ts = 100
+num_traj = 75
 
 #obs_img_dim=196, 
 env = rv.make(
-    "SawyerRigAffordances-v6", 
-    gui=True, 
+    "SawyerDiverseDrawerPnpPush-v0", #"SawyerRigAffordances-v6", #"SawyerResetFreeDrawerPnpPush-v0", 
+    gui=False, 
     expl=True, 
-    reset_interval=100, 
+    reset_interval=1, #10, 
     #reset_gripper_interval=1,
     env_obs_img_dim=196, 
     test_env=True, 
-    test_env_command=drawer_pnp_push_commands[14],
-    use_test_env_command_sequence=False,
+    test_env_command=drawer_pnp_push_commands[94],
+    # use_test_env_command_sequence=False,
     demo_num_ts=ts,
     # fixed_drawer_yaw=171.86987153482346,
     # fixed_drawer_quadrant=1,
     expert_policy_std=.05,
     downsample=False,
     #configs=drawer_pnp_push_env_configs[1],
-    #fixed_task='move_obj_pnp',
+    # fixed_task='move_obj_slide',
+    # random_init_gripper_pos=True
+    # render_depth=True,
+    # render_segmentation=True,
 )
 
-save_video = False
+save_video = True
 
 if save_video:
     video_save_path = '/media/ashvin/data1/patrickhaoy/data/test/'
-    num_traj = 100 #2
+    num_traj = 1 #4 #2
     observations = np.zeros((num_traj*ts, 196, 196, 3))
 
-# goal_path = f'/media/ashvin/data1/patrickhaoy/data/env6_td_pnp_push/td_pnp_push_scripted_goals_seed14.pkl'
-# goal_state = np.load(goal_path, allow_pickle=True)['state_desired_goal'][0]
 
 tasks_success = dict()
 tasks_count = dict()
@@ -48,6 +49,7 @@ for i in range(num_traj):
     curr_task = env.curr_task
     is_done = False
     for t in range(ts):
+        # np.uint8(env.render_obs())
         if save_video:
             img = np.uint8(env.render_obs())
             # from PIL import Image
@@ -56,10 +58,10 @@ for i in range(num_traj):
             # exit()
             observations[i*ts + t, :] = img
         action, done = env.get_demo_action(first_timestep=(t == 0), return_done=True)
-        if i % 2 == 1 and t > 40:
-            action[0] -= 1
+        # sign = 1 if i % 2 == 0 else -1
+        action = np.array([-1, -1, 0, 0, -1])
+        # done = False
         next_observation, reward, _, info = env.step(action)
-        # print(env.get_success_metric(env.get_observation()['state_observation'], goal_state, key='overall'))
         if done and not is_done:
             is_done = True 
             
@@ -67,6 +69,7 @@ for i in range(num_traj):
                 tasks_success[curr_task] = 1
             else:
                 tasks_success[curr_task] += 1
+            print("success")
     
     if curr_task not in tasks_count.keys():
         tasks_count[curr_task] = 1
