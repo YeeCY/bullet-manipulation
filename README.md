@@ -38,6 +38,8 @@ This repository extends https://github.com/avisingh599/roboverse which was devel
 python shapenet_scripts/env6_demo_collector_target.py --save_path SAVE_PATH --num_timesteps 75 --reset_interval 4 --num_trajectories_per_task_per_setting 200 --num_threads NUM_THREADS --num_tasks NUM_TASKS
 ```
 
+Set NUM_TASKS=75 will collect a dataset with around 1.1M transitions.
+
 ## Pre-sampled Goals
 
 Pre-sampled goals are contained in directory `goals_early_stop`.
