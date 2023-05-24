@@ -17,9 +17,23 @@ Vitchyr H. Pong, Ashvin Nair, Laura Smith, Catherine Huang, Sergey Levine. arXiv
 This repository extends https://github.com/avisingh599/roboverse which was developed by Avi Singh, Albert Yu, Jonathan Yang, Michael Janner, Huihan Liu, and Gaoyue Zhou. If you want to use ShapeNet objects, please download it from that repository: https://github.com/avisingh599/roboverse/tree/master/roboverse/assets/bullet-objects
 
 ## Setup
-`pip install -r requirements.txt`
+
+- install packages
+
+  ```pip install -r requirements.txt```
+
+- Clone repository `multiworld` from [here](https://github.com/vitchyr/multiworld.git).
+
+- Create `PYTHONPATH` environment variable, replace `PYATHON_TO_RAILRL_PRIVATE_REPO`, `PATH_TO_THIS_REPO`, and `PATH_TO_MULTIWORLD_REPO`.
+
+  ```
+  export PYTHONPATH=$PYTHONPATH:PYATHON_TO_RAILRL_PRIVATE_REPO
+  export PYTHONPATH=$PYTHONPATH:PATH_TO_THIS_REPO/roboverse/envs/assets/bullet-objects
+  export PYTHONPATH=$PYTHONPATH:PATH_TO_MULTIWORLD_REPO
+  ```
 
 ## Dataset Collection
+
 ```
 python shapenet_scripts/env6_demo_collector_target.py --save_path SAVE_PATH --num_timesteps 75 --reset_interval 4 --num_trajectories_per_task_per_setting 200 --num_threads NUM_THREADS --num_tasks NUM_TASKS
 ```
@@ -30,4 +44,4 @@ Pre-sampled goals are contained in directory `goals_early_stop`.
 
 ## Policy Evaluation
 
-An outdated script is provided in `shapenet_scripts/eval_policy.py`. It is supposed to run with `railrl-private` repo.
+A script is provided in `shapenet_scripts/eval_policy.py`. It is supposed to run with `railrl-private` repo.

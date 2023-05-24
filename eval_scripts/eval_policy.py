@@ -15,6 +15,7 @@ from eval_scripts.drawer_pnp_push_commands import drawer_pnp_push_commands
 
 from eval_scripts.utils.io import load_local_or_remote_file
 import eval_scripts.utils.pytorch_util as ptu
+import rlkit.torch.pytorch_util as rlkit_ptu
 
 
 def path_collector_obs_processor(
@@ -35,6 +36,7 @@ def path_collector_obs_processor(
 
 def main(args):
     ptu.set_gpu_mode(1)
+    rlkit_ptu.set_gpu_mode(1)
 
     high_res_obs_imgs = np.zeros(
         (args.num_trajectories * args.num_timesteps, args.env_obs_img_dim, args.env_obs_img_dim, 3))
