@@ -46,4 +46,4 @@ Pre-sampled goals are contained in directory `goals_early_stop`.
 
 ## Policy Evaluation
 
-A script is provided in `shapenet_scripts/eval_policy.py`. It is supposed to run with `railrl-private` repo.
+A script is provided in `shapenet_scripts/eval_policy.py`. It was adapted from `rlkit` and is supposed to run with `railrl-private` repo.
