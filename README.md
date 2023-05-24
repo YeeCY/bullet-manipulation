@@ -19,15 +19,15 @@ This repository extends https://github.com/avisingh599/roboverse which was devel
 ## Setup
 `pip install -r requirements.txt`
 
-## Quick start
-The best way to get started is to run:
-
+## Dataset Collection
 ```
-python scripts/collect_data.py --gui True
+python shapenet_scripts/env6_demo_collector_target.py --save_path SAVE_PATH --num_timesteps 75 --reset_interval 4 --num_trajectories_per_task_per_setting 200 --num_threads NUM_THREADS --num_tasks NUM_TASKS
 ```
 
-If you have a spacemouse, you can run the environments interactively with: 
-```
-python scripts/spacemouse_control.py
-```
+## Pre-sampled Goals
 
+Pre-sampled goals are contained in directory `goals_early_stop`.
+
+## Policy Evaluation
+
+An outdated script is provided in `shapenet_scripts/eval_policy.py`. It is supposed to run with `railrl-private` repo.
