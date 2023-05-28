@@ -3,11 +3,11 @@ import argparse
 import numpy as np
 import pickle as pkl
 from tqdm import tqdm
-from matplotlib import pyplot as plt  # NOQA
+from matplotlib import pyplot as plt
 
 import roboverse
 
-from rlkit.experimental.kuanfang.envs.drawer_pnp_push_commands import drawer_pnp_push_commands  # NOQA
+from eval_scripts.drawer_pnp_push_commands import drawer_pnp_push_commands
 
 ########################################
 # Args.
@@ -17,8 +17,11 @@ parser.add_argument('--output_dir', type=str)
 parser.add_argument('--num_trajectories', type=int, default=32)
 parser.add_argument('--max_steps_per_stage', type=int, default=160)
 parser.add_argument('--num_subgoals', type=int, default=16)
-parser.add_argument('--subgoal_interval', type=int, default=10)
+parser.add_argument('--subgoal_interval', type=int, default=15)
+parser.add_argument('--downsample', action='store_true')
 parser.add_argument('--test_env_seeds', nargs='+', type=int)
+parser.add_argument('--timeout_k_steps_after_done', type=int, default=10)
+parser.add_argument('--mix_timeout_k', action='store_true')
 parser.add_argument('--debug',
                     dest='debug',
                     action='store_true',
@@ -31,10 +34,10 @@ max_steps_per_stage = args.max_steps_per_stage
 subgoal_interval = args.subgoal_interval
 num_subgoals = args.num_subgoals
 debug = args.debug
-timeout_k_steps_after_done = 20
-mix_timeout_k = False
+timeout_k_steps_after_done = args.timeout_k_steps_after_done
+mix_timeout_k = args.mix_timeout_k
 
-for test_env_seed in args.test_env_seeds:  # NOQA
+for test_env_seed in args.test_env_seeds:
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
@@ -49,15 +52,14 @@ for test_env_seed in args.test_env_seeds:  # NOQA
     ########################################
     kwargs = {
         'test_env_command': command,
-        'downsample': True,
-        'env_obs_img_dim': 196,
-        'random_init_gripper_pos': False, #True,
-        'random_init_gripper_yaw': False,
     }
+    if args.downsample:
+        kwargs['downsample'] = True
+        kwargs['env_obs_img_dim'] = 196
     env = roboverse.make('SawyerRigAffordances-v6',
-                                    test_env=True,
-                                    expl=True,
-                                    **kwargs)
+                         test_env=True,
+                         expl=True,
+                         **kwargs)
 
     ########################################
     # Rollout in Environment and Collect Data.
@@ -68,18 +70,18 @@ for test_env_seed in args.test_env_seeds:  # NOQA
 
     dataset = {
         'initial_latent_state':
-        np.zeros((num_trajectories, 720), dtype=np.float),  # NOQA
+            np.zeros((num_trajectories, 720), dtype=np.float),
         'latent_desired_goal':
-        np.zeros((num_trajectories, 720), dtype=np.float),  # NOQA
+            np.zeros((num_trajectories, 720), dtype=np.float),
         'state_desired_goal':
-        np.zeros((num_trajectories, obs_dim), dtype=np.float),  # NOQA
+            np.zeros((num_trajectories, obs_dim), dtype=np.float),
         'image_desired_goal':
-        np.zeros((num_trajectories, imlength), dtype=np.float),  # NOQA
+            np.zeros((num_trajectories, imlength), dtype=np.float),
         'initial_image_observation':
-        np.zeros((num_trajectories, imlength), dtype=np.float),  # NOQA
+            np.zeros((num_trajectories, imlength), dtype=np.float),
         'image_plan':
-        np.zeros((num_trajectories, num_subgoals, imlength),
-                 dtype=np.float),  # NOQA
+            np.zeros((num_trajectories, num_subgoals, imlength),
+                     dtype=np.float),
     }
 
     if mix_timeout_k:
@@ -148,7 +150,7 @@ for test_env_seed in args.test_env_seeds:  # NOQA
                             timeout_k = timeout_k_steps_after_done
                         timeout = t_i + timeout_k  # Lift up the gripper.
                         has_done = True
-                    
+
                     if t_i >= timeout:
                         print('timeout')
                         break
