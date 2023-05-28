@@ -2,10 +2,6 @@
 
 This repo contains PyBullet-based manipulation environments consisting of a Sawyer robot manipulating drawers and picking and placing objects.
 
-| <img src="gifs/fullimgs_video_0.gif" width="200" /> | <img src="gifs/fullimgs_video_1.gif" width="200" /> | <img src="gifs/fullimgs_video_2.gif" width="200" /> |
-|---|---|---|
-| <img src="gifs/fullimgs_video_3.gif" width="200" /> | <img src="gifs/fullimgs_video_4.gif" width="200" /> | <img src="gifs/fullimgs_video_5.gif" width="200" /> |
-
 These environments are featured in:
 
 [What Can I Do Here? Learning New Skills by Imagining Visual Affordances](https://arxiv.org/abs/2106.00671)
@@ -46,4 +42,6 @@ Pre-sampled goals are contained in directory `goals_early_stop`.
 
 ## Policy Evaluation
 
-A script is provided in `shapenet_scripts/eval_policy.py`. It was adapted from `rlkit` and is supposed to run with `railrl-private` repo.
+A script is provided in `eval_scripts/eval_policy.py`. It was adapted from `rlkit` and is supposed to run with `railrl-private` repo.
+
+The success metric can be computed using `get_success_metric` function like [here](https://github.com/YeeCY/bullet-manipulation/blob/7e02ece9e247f3aaf013abf09d88dd141a7c0424/eval_scripts/eval_policy.py#L130).
