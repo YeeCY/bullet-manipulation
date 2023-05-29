@@ -22,6 +22,7 @@ parser.add_argument('--downsample', action='store_true')
 parser.add_argument('--test_env_seeds', nargs='+', type=int)
 parser.add_argument('--timeout_k_steps_after_done', type=int, default=10)
 parser.add_argument('--mix_timeout_k', action='store_true')
+parser.add_argument('--visualize_goal', action='store_true')
 parser.add_argument('--debug',
                     dest='debug',
                     action='store_true',
@@ -56,6 +57,8 @@ for test_env_seed in args.test_env_seeds:
     if args.downsample:
         kwargs['downsample'] = True
         kwargs['env_obs_img_dim'] = 196
+    if args.visualize_goal:
+        kwargs['env_obs_img_dim'] = 196 # visualize goals
     env = roboverse.make('SawyerRigAffordances-v6',
                          test_env=True,
                          expl=True,
@@ -175,6 +178,19 @@ for test_env_seed in args.test_env_seeds:
                 _img = np.transpose(_img, [2, 1, 0])
                 plt.imshow(_img)
                 plt.show()
+
+            if args.visualize_goal:
+                fig = plt.figure(figsize=(6, 6.4))
+                _img = np.reshape(goal_img, [3, 196, 196])
+                _img = np.transpose(_img, [2, 1, 0])
+                plt.imshow(_img)
+                plt.axis("off")
+                plt.title("goal", fontsize=55, y=-0.125)
+                fig.tight_layout(rect=[-0.025, 0.025, 1.025, 1.0])  # left, bottom, right, top
+                goal_fig_filepath = os.path.abspath(f"goals/goal_seed={test_env_seed}.pdf")
+                fig.savefig(goal_fig_filepath)
+                print(f"Save goal figure to: {goal_fig_filepath}")
+                exit()
 
             print('number of subgoals: ', len(plan_imgs))
             plan_imgs += [goal_img] * (num_subgoals - len(plan_imgs))
